@@ -51,6 +51,33 @@ final class ProviderEndpointValidatorTests: XCTestCase {
         XCTAssertEqual(validator.reach(of: "https://api.deepseek.com"), .publicInternet)
     }
 
+    /// 局域网服务只填到端口时自动补 /v1，否则拼出的 …/chat/completions 会 404。
+    func testNormalizesLocalEndpointWithoutPath() {
+        XCTAssertEqual(
+            validator.normalizedBaseURL("http://192.168.5.90:11434"),
+            "http://192.168.5.90:11434/v1"
+        )
+        XCTAssertEqual(
+            validator.normalizedBaseURL(" http://127.0.0.1:11434 "),
+            "http://127.0.0.1:11434/v1"
+        )
+        XCTAssertTrue(validator.appendsVersionPath("http://192.168.5.90:11434"))
+    }
+
+    func testLeavesExplicitPathsAndPublicHostsAlone() {
+        for address in [
+            "http://192.168.5.90:11434/v1",
+            "http://192.168.5.90:11434/v1/",
+            "http://192.168.5.90:8000/custom/path",
+            "https://api.deepseek.com",
+            "https://api.openai.com/v1",
+            "https://gateway.example.com/openai"
+        ] {
+            XCTAssertEqual(validator.normalizedBaseURL(address), address, address)
+            XCTAssertFalse(validator.appendsVersionPath(address), address)
+        }
+    }
+
     func testInvalidOrEmptyInputFailsClosed() {
         XCTAssertNil(validator.reach(of: ""))
         XCTAssertNil(validator.reach(of: "api.openai.com/v1"))

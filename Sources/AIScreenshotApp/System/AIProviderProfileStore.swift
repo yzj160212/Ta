@@ -53,20 +53,23 @@ struct AIProviderProfileStore {
     @discardableResult
     func saveProfile(_ profile: AIProviderProfile, apiKey: String? = nil) throws -> AIProviderProfileState {
         var state = try loadState()
-        if let index = state.profiles.firstIndex(where: { $0.id == profile.id }) {
-            state.profiles[index] = profile
+        // 落盘的地址已经补好 /v1（本地服务只填到端口时），避免存进去一个会 404 的地址。
+        var saved = profile
+        saved.baseURL = ProviderEndpointValidator().normalizedBaseURL(profile.baseURL)
+        if let index = state.profiles.firstIndex(where: { $0.id == saved.id }) {
+            state.profiles[index] = saved
         } else {
-            state.profiles.append(profile)
+            state.profiles.append(saved)
         }
-        if state.activeProfileID == nil, profile.validationMessage() == nil {
-            state.activeProfileID = profile.id
+        if state.activeProfileID == nil, saved.validationMessage() == nil {
+            state.activeProfileID = saved.id
         }
         let trimmedKey = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !trimmedKey.isEmpty {
-            try secretStore.save(trimmedKey, account: keychainAccount(for: profile.id))
+            try secretStore.save(trimmedKey, account: keychainAccount(for: saved.id))
         }
-        if state.translationProfileID == nil, translationEligibility(of: profile) == nil {
-            state.translationProfileID = profile.id
+        if state.translationProfileID == nil, translationEligibility(of: saved) == nil {
+            state.translationProfileID = saved.id
         }
         try saveState(state)
         return state

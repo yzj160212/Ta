@@ -428,6 +428,14 @@ struct ModelSettingsView: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(minWidth: 350)
                 }
+                if ProviderEndpointValidator().appendsVersionPath(draft.baseURL) {
+                    Label(
+                        "本地服务未写路径，保存与请求时会自动补成 \(ProviderEndpointValidator().normalizedBaseURL(draft.baseURL))",
+                        systemImage: "wand.and.stars"
+                    )
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
                 LabeledContent("识图默认任务") {
                     Picker("识图默认任务", selection: $taskTemplate) {
                         ForEach(MultimodalTaskTemplate.allCases, id: \.rawValue) { task in
@@ -823,6 +831,8 @@ struct ModelSettingsView: View {
     }
 
     private func persistDraft() throws {
+        // 先把本地服务的地址补全成 …/v1，存进去的就是能直接用的地址。
+        draft.baseURL = ProviderEndpointValidator().normalizedBaseURL(draft.baseURL)
         if let validation = draft.validationMessage(
             requiresVisionModel: selectedPreset.supportsVisionDirectly,
             requiresTextModel: true

@@ -274,9 +274,11 @@ public struct TranslationProviderClient: @unchecked Sendable {
         from rawValue: String,
         model: String
     ) throws -> URL {
-        let trimmed = rawValue
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "，,"))
+        let trimmed = ProviderEndpointValidator().normalizedBaseURL(
+            rawValue
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "，,"))
+        )
         guard !trimmed.isEmpty else {
             throw TranslationProviderError.invalidEndpoint("请先配置翻译 API 地址。")
         }

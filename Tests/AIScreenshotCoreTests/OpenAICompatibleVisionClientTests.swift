@@ -63,6 +63,29 @@ final class OpenAICompatibleVisionClientTests: XCTestCase {
         XCTAssertEqual(result, "局域网识别结果")
     }
 
+    /// 只填到端口的局域网地址会被补成 …/v1/chat/completions（Ollama 等服务的惯例路径）。
+    func testLocalEndpointWithoutVersionPathGetsV1() async throws {
+        VisionURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.absoluteString, "http://192.168.5.90:11434/v1/chat/completions")
+            let response = HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (response, Data(#"{"choices":[{"message":{"content":"ok"}}]}"#.utf8))
+        }
+
+        let result = try await makeClient().recognize(
+            baseURL: "http://192.168.5.90:11434",
+            model: "translategemma:4b",
+            apiKey: "",
+            imageData: Data([1, 2, 3]),
+            prompt: "识别"
+        )
+        XCTAssertEqual(result, "ok")
+    }
+
     /// 公网服务仍然必须带 Key，缺了直接报错，不发请求。
     func testPublicEndpointStillRequiresAPIKey() async {
         VisionURLProtocol.handler = { _ in

@@ -100,7 +100,8 @@ public struct OpenAICompatibleVisionClient: @unchecked Sendable {
     }
 
     private func endpointURL(from rawValue: String) throws -> URL {
-        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 本地服务只填到端口时（http://192.168.5.90:11434）自动补 /v1，否则会打到 404。
+        let trimmed = ProviderEndpointValidator().normalizedBaseURL(rawValue)
         guard !trimmed.isEmpty else {
             throw VisionClientError.invalidEndpoint("请先配置 Base URL。")
         }

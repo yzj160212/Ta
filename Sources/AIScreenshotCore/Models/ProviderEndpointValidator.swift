@@ -65,6 +65,26 @@ public struct ProviderEndpointValidator: Sendable {
         return reach == .publicInternet
     }
 
+    /// 本机 / 局域网里的 OpenAI 兼容服务（Ollama、LM Studio、vLLM、SGLang）惯例把接口挂在 `/v1` 下。
+    /// 用户往往只填到端口（如 `http://192.168.5.90:11434`），直接拼 `chat/completions` 会 404，
+    /// 所以「本地地址 + 路径为空」时补上 `/v1`；公网地址与已有路径的地址一律不动。
+    public func normalizedBaseURL(_ rawValue: String) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let reach = reach(of: trimmed), reach != .publicInternet,
+              var components = URLComponents(string: trimmed) else { return trimmed }
+        let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard path.isEmpty else { return trimmed }
+        components.path = "/v1"
+        return components.url?.absoluteString ?? trimmed
+    }
+
+    /// 保存 / 发请求前会不会被补上 `/v1`，用于界面提示。
+    public func appendsVersionPath(_ rawValue: String) -> Bool {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        return normalizedBaseURL(trimmed) != trimmed
+    }
+
     public func validationMessage(for rawValue: String) -> String? {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
