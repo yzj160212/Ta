@@ -184,9 +184,21 @@ private struct GeneralSettingsView: View {
     @AppStorage("resultBarDuration") private var resultBarDuration = 3.0
     @AppStorage("saveHistory") private var saveHistory = false
     @AppStorage("postCaptureAction") private var postCaptureAction = PostCaptureAction.choose.rawValue
+    @AppStorage(MenuBarIconPreference.defaultsKey) private var menuBarIconVisible = true
 
     var body: some View {
         Form {
+            Section("菜单栏") {
+                Toggle("在菜单栏显示「拓」图标", isOn: $menuBarIconVisible)
+                Text(
+                    menuBarIconVisible
+                        ? "关掉后图标会从菜单栏消失，App 继续在后台运行：全局快捷键、截图、识图、Agent 调用都不受影响。"
+                        : "图标已隐藏，App 仍在后台运行。要恢复：点 Dock 里的「拓」打开欢迎页 → ⌘, 进设置，或运行 open -a 拓 --args --show-menu-bar-icon。"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             Section("截图完成后") {
                 Picker("默认动作", selection: $postCaptureAction) {
                     Text("每次让我选择（推荐）").tag(PostCaptureAction.choose.rawValue)
