@@ -185,18 +185,16 @@ private struct GeneralSettingsView: View {
     @AppStorage("saveHistory") private var saveHistory = false
     @AppStorage("postCaptureAction") private var postCaptureAction = PostCaptureAction.choose.rawValue
     @AppStorage(MenuBarIconPreference.defaultsKey) private var menuBarIconVisible = true
+    @AppStorage(DockIconPreference.defaultsKey) private var dockIconVisible = true
 
     var body: some View {
         Form {
-            Section("菜单栏") {
+            Section("菜单栏与 Dock") {
                 Toggle("在菜单栏显示「拓」图标", isOn: $menuBarIconVisible)
-                Text(
-                    menuBarIconVisible
-                        ? "关掉后图标会从菜单栏消失，App 继续在后台运行：全局快捷键、截图、识图、Agent 调用都不受影响。"
-                        : "图标已隐藏，App 仍在后台运行。要恢复：点 Dock 里的「拓」打开欢迎页 → ⌘, 进设置，或运行 open -a 拓 --args --show-menu-bar-icon。"
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Toggle("在 Dock 中显示图标", isOn: $dockIconVisible)
+                Text(entryPointHint)
+                    .font(.caption)
+                    .foregroundStyle(bothHidden ? .orange : .secondary)
             }
 
             Section("截图完成后") {
@@ -234,6 +232,24 @@ private struct GeneralSettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
+    }
+
+    /// 两个入口（菜单栏图标、Dock 图标）都不是必须的，但要提醒只剩什么能找回设置。
+    private var bothHidden: Bool {
+        !menuBarIconVisible && !dockIconVisible
+    }
+
+    private var entryPointHint: String {
+        switch (menuBarIconVisible, dockIconVisible) {
+        case (true, true):
+            "两个入口都显示。隐藏任意一个都不影响后台运行：全局快捷键、截图、识图、翻译与 Agent 调用照常工作。"
+        case (true, false):
+            "Dock 图标已隐藏，App 仍在后台运行。找回设置：点菜单栏图标 → 设置。"
+        case (false, true):
+            "菜单栏图标已隐藏。找回设置：点 Dock 里的「拓」→ 欢迎页 → ⌘, ，或运行 open -a 拓 --args --show-menu-bar-icon。"
+        case (false, false):
+            "两个入口都隐藏了，GUI 上没有任何入口。只能用命令行找回：open -a 拓 --args --show-dock-icon"
+        }
     }
 }
 

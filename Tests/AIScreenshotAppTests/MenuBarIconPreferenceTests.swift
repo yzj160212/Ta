@@ -40,10 +40,49 @@ final class MenuBarIconPreferenceTests: XCTestCase {
         )
 
         XCTAssertTrue(visible)
+        // 读取本身不写偏好（写 UserDefaults 会发通知，在通知回调里再读会重入崩溃），
+        // 持久化交给显式方法。
+        XCTAssertFalse(defaults.bool(forKey: MenuBarIconPreference.defaultsKey))
+
+        MenuBarIconPreference.persistForcedVisibilityIfNeeded(
+            arguments: [MenuBarIconPreference.forceShowArgument],
+            defaults: defaults
+        )
         XCTAssertTrue(
             defaults.bool(forKey: MenuBarIconPreference.defaultsKey),
-            "用启动参数恢复后要把偏好一起改回「显示」，否则设置页开关和实际状态会打架"
+            "用启动参数恢复后要把偏好改回「显示」，否则设置页开关和实际状态会打架"
         )
+    }
+
+    // MARK: - Dock 图标
+
+    func testDockIconDefaultsToVisible() {
+        XCTAssertTrue(DockIconPreference.isVisible(arguments: [], defaults: defaults))
+        XCTAssertEqual(DockIconPreference.activationPolicy(visible: true), .regular)
+        XCTAssertEqual(
+            DockIconPreference.activationPolicy(visible: false),
+            .accessory,
+            "隐藏 Dock 图标走 .accessory：Dock 里不出现，但菜单栏图标与后台能力都保留"
+        )
+    }
+
+    func testDockIconHonorsHiddenPreferenceAndForceShowArgument() {
+        defaults.set(false, forKey: DockIconPreference.defaultsKey)
+        XCTAssertFalse(DockIconPreference.isVisible(arguments: [], defaults: defaults))
+
+        // 两个入口都隐藏时唯一的找回方式
+        let visible = DockIconPreference.isVisible(
+            arguments: ["AIScreenshotApp", DockIconPreference.forceShowArgument],
+            defaults: defaults
+        )
+        XCTAssertTrue(visible)
+        XCTAssertFalse(defaults.bool(forKey: DockIconPreference.defaultsKey))
+
+        DockIconPreference.persistForcedVisibilityIfNeeded(
+            arguments: [DockIconPreference.forceShowArgument],
+            defaults: defaults
+        )
+        XCTAssertTrue(defaults.bool(forKey: DockIconPreference.defaultsKey))
     }
 
     @MainActor
