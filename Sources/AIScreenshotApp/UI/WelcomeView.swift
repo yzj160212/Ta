@@ -148,7 +148,7 @@ private struct WelcomeView: View {
     private var header: some View {
         HStack(spacing: 15) {
             TaAppIcon(size: 52)
-                .shadow(color: TaPalette.ink.opacity(0.12), radius: 10, y: 4)
+                .shadow(color: TaPalette.inkSurface.opacity(0.12), radius: 10, y: 4)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(TaBrand.name)
@@ -291,17 +291,17 @@ private struct WelcomePrimaryActionButton: View {
                         .fill(TaPalette.cinnabar)
                     Image(systemName: "viewfinder")
                         .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(TaPalette.paper)
+                        .foregroundStyle(TaPalette.onCinnabar)
                 }
                 .frame(width: 52, height: 52)
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("开始拓取")
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(TaPalette.paper)
+                        .foregroundStyle(TaPalette.onInkSurface)
                     Text("框选屏幕，再取字、翻译、复制、钉图、标注或美化")
                         .font(.callout)
-                        .foregroundStyle(TaPalette.paper.opacity(0.67))
+                        .foregroundStyle(TaPalette.onInkSurface.opacity(0.67))
                 }
 
                 Spacer(minLength: 16)
@@ -312,21 +312,21 @@ private struct WelcomePrimaryActionButton: View {
                     Image(systemName: "arrow.right")
                 }
                 .font(.callout.weight(.semibold))
-                .foregroundStyle(TaPalette.ink)
+                .foregroundStyle(TaPalette.inkSurface)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .background(TaPalette.paper, in: Capsule())
+                .background(TaPalette.onInkSurface, in: Capsule())
             }
             .padding(18)
             .background(
-                TaPalette.ink.opacity(isHovering ? 0.94 : 1),
+                TaPalette.inkSurface.opacity(isHovering ? 0.94 : 1),
                 in: RoundedRectangle(cornerRadius: WelcomeViewMetrics.primaryCornerRadius, style: .continuous)
             )
             .overlay {
                 RoundedRectangle(cornerRadius: WelcomeViewMetrics.primaryCornerRadius, style: .continuous)
                     .stroke(TaPalette.cinnabar.opacity(isHovering ? 0.72 : 0.20), lineWidth: isHovering ? 2 : 1)
             }
-            .shadow(color: TaPalette.ink.opacity(isHovering ? 0.16 : 0.10), radius: isHovering ? 16 : 10, y: 6)
+            .shadow(color: TaPalette.inkSurface.opacity(isHovering ? 0.16 : 0.10), radius: isHovering ? 16 : 10, y: 6)
             .contentShape(RoundedRectangle(cornerRadius: WelcomeViewMetrics.primaryCornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)

@@ -177,25 +177,25 @@ private struct MenuActionButton: View {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .medium))
                     .frame(width: 22)
-                    .foregroundStyle(emphasized ? TaPalette.paper : TaPalette.cinnabar)
+                    .foregroundStyle(emphasized ? TaPalette.onInkSurface : TaPalette.cinnabar)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .foregroundStyle(emphasized ? TaPalette.paper : TaPalette.ink)
+                        .foregroundStyle(emphasized ? TaPalette.onInkSurface : TaPalette.ink)
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundStyle(emphasized ? TaPalette.paper.opacity(0.62) : TaPalette.mutedInk)
+                        .foregroundStyle(emphasized ? TaPalette.onInkSurface.opacity(0.62) : TaPalette.mutedInk)
                 }
                 Spacer()
                 Text(shortcut)
                     .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(emphasized ? TaPalette.paper.opacity(0.72) : TaPalette.mutedInk)
+                    .foregroundStyle(emphasized ? TaPalette.onInkSurface.opacity(0.72) : TaPalette.mutedInk)
             }
             .contentShape(Rectangle())
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .background(
                 emphasized
-                    ? TaPalette.ink.opacity(isHovering ? 0.92 : 1)
+                    ? TaPalette.inkSurface.opacity(isHovering ? 0.92 : 1)
                     : TaPalette.cinnabar.opacity(isHovering ? 0.07 : 0),
                 in: RoundedRectangle(cornerRadius: 10, style: .continuous)
             )

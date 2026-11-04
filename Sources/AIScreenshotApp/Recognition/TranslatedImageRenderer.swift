@@ -84,20 +84,26 @@ struct TranslatedImageRenderer {
 
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: representation)
-        NSColor(calibratedWhite: 0.97, alpha: 1).setFill()
+        // 导出的双语图是一张固定浅色的成品：面板与文字都写死颜色，
+        // 不跟随系统外观，否则深色模式下 labelColor 会变成白字压白底。
+        let panelColor = NSColor(calibratedWhite: 0.97, alpha: 1)
+        let primaryTextColor = NSColor(calibratedWhite: 0.14, alpha: 1)
+        let secondaryTextColor = NSColor(calibratedWhite: 0.38, alpha: 1)
+        let separatorColor = NSColor(calibratedWhite: 0.80, alpha: 1)
+        panelColor.setFill()
         CGRect(origin: .zero, size: totalSize).fill()
         NSImage(cgImage: image, size: CGSize(width: image.width, height: image.height)).draw(
             in: CGRect(x: 0, y: panelHeight, width: image.width, height: image.height)
         )
 
         let separatorY = CGFloat(panelHeight) - 1
-        NSColor.separatorColor.setFill()
+        separatorColor.setFill()
         CGRect(x: 0, y: separatorY, width: CGFloat(width), height: 1).fill()
 
         var cursorY = CGFloat(panelHeight) - headerFont.pointSize * 1.65
         "双语翻译 · \(targetLanguage)".draw(
             at: CGPoint(x: horizontalPadding, y: cursorY),
-            withAttributes: [.font: headerFont, .foregroundColor: NSColor.labelColor]
+            withAttributes: [.font: headerFont, .foregroundColor: primaryTextColor]
         )
         cursorY -= headerFont.pointSize * 1.25
 
@@ -106,18 +112,18 @@ struct TranslatedImageRenderer {
             cursorY -= sourceHeight
             line.sourceText.draw(
                 in: CGRect(x: horizontalPadding, y: cursorY, width: contentWidth, height: sourceHeight),
-                withAttributes: [.font: sourceFont, .foregroundColor: NSColor.secondaryLabelColor]
+                withAttributes: [.font: sourceFont, .foregroundColor: secondaryTextColor]
             )
             cursorY -= textSpacing
             let targetHeight = textHeight(line.translatedText, width: contentWidth, font: targetFont)
             cursorY -= targetHeight
             line.translatedText.draw(
                 in: CGRect(x: horizontalPadding, y: cursorY, width: contentWidth, height: targetHeight),
-                withAttributes: [.font: targetFont, .foregroundColor: NSColor.labelColor]
+                withAttributes: [.font: targetFont, .foregroundColor: primaryTextColor]
             )
             cursorY -= rowSpacing
             if index < lines.count - 1 {
-                NSColor.separatorColor.withAlphaComponent(0.55).setFill()
+                separatorColor.withAlphaComponent(0.55).setFill()
                 CGRect(x: horizontalPadding, y: cursorY + rowSpacing * 0.45, width: contentWidth, height: 1).fill()
             }
         }
