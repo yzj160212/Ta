@@ -83,6 +83,8 @@ jobs:
           cp Resources/Ta.icns "$APP/Contents/Resources/Ta.icns"
           cp Resources/Brand/Ta-AppIcon.png "$APP/Contents/Resources/Brand/Ta-AppIcon.png"
           cp -R Resources/Brand/Providers "$APP/Contents/Resources/Brand/Providers"
+          # 与本机构建共用同一段清单注入逻辑，避免两条组装路径出现偏差
+          scripts/inject-ocr-catalog.sh "$APP" "$PWD"
           plutil -lint "$APP/Contents/Info.plist"
           codesign --force --deep --sign - "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
