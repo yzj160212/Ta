@@ -5,9 +5,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let icon = TaBrandAssets.appIcon {
-            NSApplication.shared.applicationIconImage = icon
-        }
+        // 故意不设置 `NSApplication.shared.applicationIconImage`。
+        // Dock 里显示的图标来自 App Bundle 的 Ta.icns（已按 macOS 图标网格留出
+        // ~80.5% 的图形占比）；一旦在这里用满幅美术图覆盖，Dock 会把它缩放到整块
+        // 图标位置，结果比邻居大一圈（实测 134px vs 110px @ tilesize 67pt）。
         if let appModel = AppModel.current {
             menuBarController = MenuBarController(appModel: appModel)
         }
