@@ -29,8 +29,12 @@ chmod 755 "$APP_BUNDLE_DIR/Contents/MacOS/$EXECUTABLE_NAME"
 # OCR 增强包清单：优先用本地构建出来的 catalog（artifacts/ocr-packs/catalog.json），
 # 否则把 TA_OCR_CATALOG_URL 指定的远端 HTTPS 清单地址烘进 Info.plist。
 # 刻意不读 UserDefaults —— 那个入口本地程序一条 defaults write 就能改，等于任意代码执行。
+# 默认**不**把本地清单打进包体：清单里的 downloadURL 是相对路径，会相对于 .app 内的
+# 清单目录解析，而压缩包（~180MB）并不在包里 —— 内置进去只会得到一个指向不存在文件的清单。
+# 本地 Alpha 分发请用「.app 同级的 ocr-packs/」目录（见「本地分发」章节）；真要自包含分发，
+# 显式设 TA_OCR_BUNDLE_LOCAL_CATALOG=1 并把压缩包一起放进 Contents/Resources/OCRPacks/。
 OCR_CATALOG_LOCAL="$PROJECT_ROOT_DIR/artifacts/ocr-packs/catalog.json"
-if [[ -f "$OCR_CATALOG_LOCAL" ]]; then
+if [[ "${TA_OCR_BUNDLE_LOCAL_CATALOG:-0}" == "1" && -f "$OCR_CATALOG_LOCAL" ]]; then
     mkdir -p "$APP_BUNDLE_DIR/Contents/Resources/OCRPacks"
     cp "$OCR_CATALOG_LOCAL" "$APP_BUNDLE_DIR/Contents/Resources/OCRPacks/catalog.json"
     echo "已内置本地增强包清单：$OCR_CATALOG_LOCAL"
@@ -46,7 +50,13 @@ if [[ -n "$OCR_CATALOG_URL" ]]; then
         "$APP_BUNDLE_DIR/Contents/Info.plist"
     echo "已烘入远端增强包清单：$OCR_CATALOG_URL"
 elif [[ -z "$( /usr/libexec/PlistBuddy -c 'Print :TaOCRCatalogURL' "$APP_BUNDLE_DIR/Contents/Info.plist" 2>/dev/null )" ]]; then
-    echo "提示：未设置 TA_OCR_CATALOG_URL 且没有本地 catalog —— 「下载增强包」会提示清单缺失。"
+    if [[ -f "$PROJECT_ROOT_DIR/artifacts/ocr-packs/catalog.json" ]]; then
+        echo "提示：检测到 artifacts/ocr-packs/catalog.json，但未内置（默认关闭）。"
+        echo "      本地分发只需把 catalog.json 与压缩包放到 .app 同级的 ocr-packs/ 目录："
+        echo "      mkdir -p <App 所在目录>/ocr-packs && cp artifacts/ocr-packs/* <App 所在目录>/ocr-packs/"
+    else
+        echo "提示：未设置 TA_OCR_CATALOG_URL 且没有本地 catalog —— 「下载增强包」会提示清单缺失。"
+    fi
 fi
 
 plutil -lint "$APP_BUNDLE_DIR/Contents/Info.plist"
