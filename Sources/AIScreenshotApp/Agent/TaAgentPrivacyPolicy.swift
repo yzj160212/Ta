@@ -39,7 +39,9 @@ struct TaAgentPrivacyPolicy: Equatable, Sendable {
         let captureAllowed = defaults.object(forKey: TaAgentPreferenceKey.automaticCaptureAllowed) == nil
             ? true
             : defaults.bool(forKey: TaAgentPreferenceKey.automaticCaptureAllowed)
-        let cloudRaw = defaults.string(forKey: TaAgentPreferenceKey.cloudPolicy) ?? AgentCloudPolicy.auto.rawValue
+        // 默认「不许上传」：Agent 通道必须显式 cloud=allow 才能把图送去模型，
+        // 与 docs/agent-integration.md 里的 defaultCloud: deny 保持一致。
+        let cloudRaw = defaults.string(forKey: TaAgentPreferenceKey.cloudPolicy) ?? AgentCloudPolicy.deny.rawValue
         let denylist = defaults.string(forKey: TaAgentPreferenceKey.privacyDenylist) ?? ""
         let blocked = Set(denylist
             .components(separatedBy: CharacterSet(charactersIn: ",;\n"))
@@ -51,7 +53,7 @@ struct TaAgentPrivacyPolicy: Equatable, Sendable {
         return TaAgentPrivacyPolicy(
             isEnabled: enabled,
             automaticCaptureAllowed: captureAllowed,
-            cloudPolicy: AgentCloudPolicy(rawValue: cloudRaw) ?? .auto,
+            cloudPolicy: AgentCloudPolicy(rawValue: cloudRaw) ?? .deny,
             blockedBundleIdentifiers: blocked,
             allowCaptureTa: allowTa
         )

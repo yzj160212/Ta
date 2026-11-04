@@ -63,7 +63,8 @@ struct AgentSettingsTests {
 
         #expect(policy.isEnabled)
         #expect(policy.automaticCaptureAllowed)
-        #expect(policy.cloudPolicy == .auto)
+        // 默认 deny：Agent 通道的识图/翻译必须显式 cloud=allow 才会上传
+        #expect(policy.cloudPolicy == .deny)
         #expect(policy.blockedBundleIdentifiers.isEmpty)
         #expect(policy.allowCaptureTa)
     }

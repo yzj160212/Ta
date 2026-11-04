@@ -183,7 +183,7 @@ dsh plugin --profile web remove dsh-ta
 “设置 → Agent”提供：
 
 - Agent 总开关和无感自动截图开关；
-- `auto`、`allow`、`deny` 三种默认云端策略；
+- `auto`、`allow`、`deny` 三种默认云端策略（**默认 `deny`**：Agent 未显式 `cloud=allow` 时不会把图片或文字送出去）；
 - 按 Bundle ID 配置的隐私 App 黑名单；
 - 是否允许截取拓自身；
 - 临时截图缓存清理；
