@@ -101,6 +101,7 @@ enum OptionalOCRPackError: LocalizedError {
     case notInstalled
     case invalidManifest
     case invalidCatalog
+    case catalogUnreachable(Int)
     case packageUnavailable
     case wrongEngine
     case unsupportedArchitecture(String)
@@ -118,7 +119,8 @@ enum OptionalOCRPackError: LocalizedError {
         case .notInstalled: "所选 OCR 增强包尚未安装。"
         case .invalidManifest: "增强包缺少有效的 manifest.json。"
         case .invalidCatalog: "增强包发行清单格式无效。"
-        case .packageUnavailable: "没有找到适合这台 Mac 的 PaddleOCR 增强包。"
+        case .catalogUnreachable(let status): "拿不到增强包清单（HTTP \(status)）。请确认清单地址可访问，或改用「导入已解压增强包目录」。"
+        case .packageUnavailable: "没有找到可用的增强包清单：App 内没有内置 catalog，也没有配置远端 HTTPS 清单地址。"
         case .wrongEngine: "增强包类型与所选引擎不一致。"
         case .unsupportedArchitecture(let architecture): "增强包不支持当前架构：\(architecture)。"
         case .unsupportedSystem(let minimum): "增强包要求 macOS \(minimum) 或更高版本。"
@@ -138,18 +140,28 @@ struct OptionalOCRPackManager: @unchecked Sendable {
     private let applicationSupportRoot: URL
     private let bundleURL: URL
     private let session: URLSession
+    private let remoteCatalogURL: String?
+
+    /// Info.plist 里烘进去的远端清单地址（构建期由 `TA_OCR_CATALOG_URL` 决定）。
+    static let catalogURLInfoKey = "TaOCRCatalogURL"
+
+    static var bundledRemoteCatalogURL: String? {
+        Bundle.main.object(forInfoDictionaryKey: catalogURLInfoKey) as? String
+    }
 
     init(
         fileManager: FileManager = .default,
         applicationSupportRoot: URL? = nil,
         bundleURL: URL = Bundle.main.bundleURL,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        remoteCatalogURL: String? = OptionalOCRPackManager.bundledRemoteCatalogURL
     ) {
         self.fileManager = fileManager
         self.applicationSupportRoot = applicationSupportRoot
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         self.bundleURL = bundleURL
         self.session = session
+        self.remoteCatalogURL = remoteCatalogURL
     }
 
     func isInstalled(_ engine: OCREnginePreference) -> Bool {
@@ -366,8 +378,11 @@ struct OptionalOCRPackManager: @unchecked Sendable {
             data = try Data(contentsOf: catalogURL)
         } else {
             let (downloaded, response) = try await session.data(from: catalogURL)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            guard let http = response as? HTTPURLResponse else {
                 throw OptionalOCRPackError.invalidCatalog
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                throw OptionalOCRPackError.catalogUnreachable(http.statusCode)
             }
             data = downloaded
         }
@@ -394,19 +409,39 @@ struct OptionalOCRPackManager: @unchecked Sendable {
         return ResolvedCatalogPackage(package: package, archiveURL: archiveURL, isLocal: archiveURL.isFileURL)
     }
 
-    private func catalogLocation() throws -> URL {
-        // 清单地址只能来自 App 内置资源。以前这里会优先读 UserDefaults 的
-        // `ocrPackCatalogURL`，而那个键任何本地程序都能用 `defaults write` 改写：
-        // 指问攻击者的 HTTPS 服务器 → 下载攻击者的包（校验值也由攻击者的清单提供，
-        // 等于自证）→ 安装前会先跑一次 health check，等于以用户权限执行任意代码。
-        // 自建 / 自测的包请走「导入已解压增强包目录」（chooseAndImport），不要再靠远程清单。
-        let candidates = [
-            bundleURL.deletingLastPathComponent().appendingPathComponent("ocr-packs/catalog.json"),
-            bundleURL.appendingPathComponent("Contents/Resources/OCRPacks/catalog.json")
-        ]
-        if let local = candidates.first(where: { fileManager.fileExists(atPath: $0.path) }) {
-            return local
+    func catalogLocation() throws -> URL {
+        // 清单来源按优先级：
+        //   ① 随 App 打包的本地清单 —— 开发 / 预热分发；
+        //   ② Info.plist 里烘进去的远端 HTTPS 清单 —— 正式联网下载走这条；
+        //   ③ 应用目录同级的 ocr-packs/catalog.json —— 本地 Alpha 分发。
+        //
+        // 刻意**不**读 UserDefaults：以前这里优先读 `ocrPackCatalogURL`，而那个键任何
+        // 本地程序都能用 `defaults write` 改写 → 把下载源指向攻击者服务器（校验值也由
+        // 那份清单提供，等于自证），安装前还会先跑包内可执行文件的 health check，
+        // 等于以用户权限执行任意代码。
+        // 现在远端地址烘在 Info.plist（改它要重签名），本地程序无法在外面改。
+        // 自建 / 自测的包仍可走「导入已解压增强包目录」（chooseAndImport）。
+        let bundled = bundleURL
+            .appendingPathComponent("Contents/Resources/OCRPacks/catalog.json")
+        if fileManager.fileExists(atPath: bundled.path) {
+            return bundled
         }
+
+        if let configured = remoteCatalogURL?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !configured.isEmpty,
+           let remote = URL(string: configured),
+           remote.scheme?.lowercased() == "https" {
+            return remote
+        }
+
+        let sibling = bundleURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("ocr-packs/catalog.json")
+        if fileManager.fileExists(atPath: sibling.path) {
+            return sibling
+        }
+
         throw OptionalOCRPackError.packageUnavailable
     }
 

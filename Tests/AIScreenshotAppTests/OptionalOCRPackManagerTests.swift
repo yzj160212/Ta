@@ -146,6 +146,61 @@ final class OptionalOCRPackManagerTests: XCTestCase {
         XCTAssertEqual(availability.package.version, "1.0.0")
     }
 
+    /// 恢复联网下载：远端清单地址烘在 Info.plist（改它要重签名），本地程序改不了。
+    func testUsesBakedRemoteCatalogURLWhenNothingIsBundled() throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+
+        let manager = OptionalOCRPackManager(
+            applicationSupportRoot: fixture.support,
+            bundleURL: fixture.bundle,
+            remoteCatalogURL: "https://example.com/ta/ocr-packs/catalog.json"
+        )
+
+        XCTAssertEqual(
+            try manager.catalogLocation().absoluteString,
+            "https://example.com/ta/ocr-packs/catalog.json"
+        )
+    }
+
+    /// 非 https 的远端地址一律不认，避免明文拉清单。
+    func testRejectsNonHTTPSRemoteCatalogURL() throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+
+        let manager = OptionalOCRPackManager(
+            applicationSupportRoot: fixture.support,
+            bundleURL: fixture.bundle,
+            remoteCatalogURL: "http://example.com/catalog.json"
+        )
+
+        XCTAssertThrowsError(try manager.catalogLocation()) { error in
+            guard case OptionalOCRPackError.packageUnavailable? = error as? OptionalOCRPackError else {
+                return XCTFail("期望 packageUnavailable，实际：\(error)")
+            }
+        }
+    }
+
+    /// 随 App 打包的本地清单优先级最高（开发 / 预热分发）。
+    func testBundledCatalogWinsOverRemoteURL() throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+
+        let resources = fixture.bundle
+            .appendingPathComponent("Contents/Resources/OCRPacks", isDirectory: true)
+        try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+        let bundled = resources.appendingPathComponent("catalog.json")
+        try Data("{\"schemaVersion\":1,\"packages\":[]}".utf8).write(to: bundled)
+
+        let manager = OptionalOCRPackManager(
+            applicationSupportRoot: fixture.support,
+            bundleURL: fixture.bundle,
+            remoteCatalogURL: "https://example.com/ta/ocr-packs/catalog.json"
+        )
+
+        XCTAssertEqual(try manager.catalogLocation(), bundled)
+    }
+
     func testOneClickInstallHandlesArchiveListingLargerThanPipeBuffer() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

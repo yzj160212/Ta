@@ -5,6 +5,10 @@ name: 打包 macOS 中文版
 on:
   workflow_dispatch:
     inputs:
+      ocr_catalog_url:
+        description: "OCR 增强包远端清单地址（https，留空则用仓库变量 TA_OCR_CATALOG_URL；都没有则内置清单缺省）"
+        required: false
+        default: ""
       arch:
         description: "构建架构（arm64 = Apple Silicon M 系列；universal = M 系列 + Intel）"
         type: choice
@@ -66,6 +70,8 @@ jobs:
           echo "arch=$ARCH" >> "$GITHUB_OUTPUT"
 
       - name: 组装 .app
+        env:
+          TA_OCR_CATALOG_URL: ${{ inputs.ocr_catalog_url || vars.TA_OCR_CATALOG_URL }}
         run: |
           set -euo pipefail
           APP="artifacts/拓.app"

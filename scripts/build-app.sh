@@ -26,6 +26,29 @@ rm -rf "$APP_BUNDLE_DIR/Contents/Resources/Brand/Providers"
 cp -R "$PROJECT_ROOT_DIR/Resources/Brand/Providers" "$APP_BUNDLE_DIR/Contents/Resources/Brand/Providers"
 
 chmod 755 "$APP_BUNDLE_DIR/Contents/MacOS/$EXECUTABLE_NAME"
+# OCR 增强包清单：优先用本地构建出来的 catalog（artifacts/ocr-packs/catalog.json），
+# 否则把 TA_OCR_CATALOG_URL 指定的远端 HTTPS 清单地址烘进 Info.plist。
+# 刻意不读 UserDefaults —— 那个入口本地程序一条 defaults write 就能改，等于任意代码执行。
+OCR_CATALOG_LOCAL="$PROJECT_ROOT_DIR/artifacts/ocr-packs/catalog.json"
+if [[ -f "$OCR_CATALOG_LOCAL" ]]; then
+    mkdir -p "$APP_BUNDLE_DIR/Contents/Resources/OCRPacks"
+    cp "$OCR_CATALOG_LOCAL" "$APP_BUNDLE_DIR/Contents/Resources/OCRPacks/catalog.json"
+    echo "已内置本地增强包清单：$OCR_CATALOG_LOCAL"
+fi
+
+OCR_CATALOG_URL="${TA_OCR_CATALOG_URL:-}"
+if [[ -n "$OCR_CATALOG_URL" ]]; then
+    case "$OCR_CATALOG_URL" in
+        https://*) ;;
+        *) echo "TA_OCR_CATALOG_URL 必须是 https 地址：$OCR_CATALOG_URL" >&2; exit 1 ;;
+    esac
+    /usr/libexec/PlistBuddy -c "Set :TaOCRCatalogURL $OCR_CATALOG_URL" \
+        "$APP_BUNDLE_DIR/Contents/Info.plist"
+    echo "已烘入远端增强包清单：$OCR_CATALOG_URL"
+elif [[ -z "$( /usr/libexec/PlistBuddy -c 'Print :TaOCRCatalogURL' "$APP_BUNDLE_DIR/Contents/Info.plist" 2>/dev/null )" ]]; then
+    echo "提示：未设置 TA_OCR_CATALOG_URL 且没有本地 catalog —— 「下载增强包」会提示清单缺失。"
+fi
+
 plutil -lint "$APP_BUNDLE_DIR/Contents/Info.plist"
 
 # 签名身份解析顺序：

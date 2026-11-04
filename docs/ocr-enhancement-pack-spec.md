@@ -39,7 +39,13 @@ PaddleOCR-Pack-arm64-1.1.0/
 
 ## 一键安装发行清单
 
-清单只从 App 内置资源解析：先找 `AI Screenshot.app` 同级的 `ocr-packs/catalog.json`，再找 `Contents/Resources/OCRPacks/catalog.json`。为防本地程序用 `defaults write` 改写下载源，App 不再读取任何可覆盖的清单地址；自建或自测的包请用「导入已解压增强包目录」加载。相对下载地址相对于清单所在目录解析。
+清单来源按优先级，全部由构建期或 .app 包体决定，**运行期不可覆盖**：
+
+1. `Contents/Resources/OCRPacks/catalog.json` —— 随 App 打包的本地清单（`scripts/build-app.sh` 发现 `artifacts/ocr-packs/catalog.json` 时自动内置）；
+2. Info.plist 的 `TaOCRCatalogURL` —— 远端 HTTPS 清单，构建时用 `TA_OCR_CATALOG_URL` 环境变量或 CI 的 `ocr_catalog_url` 输入烘进去（改它要重签名）；
+3. `AI Screenshot.app` 同级的 `ocr-packs/catalog.json` —— 本地 Alpha 分发。
+
+刻意**不**读 UserDefaults：`ocrPackCatalogURL` 那个设置项任何本地程序都能用 `defaults write` 改写，能把下载源指到攻击者服务器（校验值也由那份清单提供，等于自证），且安装前会先运行包内可执行文件做 health check。自建或自测的包请用「导入已解压增强包目录」加载。相对下载地址相对于清单所在目录解析。
 
 ```json
 {
