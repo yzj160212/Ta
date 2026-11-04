@@ -1,0 +1,42 @@
+name: Windows 端编译检查
+
+# 这台 Mac 上没有 .NET SDK，Windows 端口的改动只能靠这里验证。
+# 只做「编译 + 受影响的单元测试」，不做打包 —— Windows 版仍是预览版，发行包走上游。
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "windows/**"
+      - ".github/workflows/build-windows.yml"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: 编译与单元测试
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: 查看工具链
+        run: dotnet --info
+
+      - name: 编译整个解决方案
+        run: dotnet build Ta.sln -c Release --nologo
+
+      - name: OCR 单元测试（含增强包清单解析）
+        run: dotnet test tests/Ta.OCR.Tests/Ta.OCR.Tests.csproj -c Release --nologo --no-build
+
+      - name: 设置项测试（含键名契约）
+        run: dotnet test tests/Ta.Settings.Tests/Ta.Settings.Tests.csproj -c Release --nologo --no-build
