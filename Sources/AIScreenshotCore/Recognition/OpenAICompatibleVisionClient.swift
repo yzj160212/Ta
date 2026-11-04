@@ -43,14 +43,19 @@ public struct OpenAICompatibleVisionClient: @unchecked Sendable {
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedModel.isEmpty else { throw VisionClientError.missingModel }
-        guard !trimmedKey.isEmpty else { throw VisionClientError.missingAPIKey }
+        // 本机 / 局域网里的服务（Ollama 之类）通常没有鉴权，不强制要 Key。
+        if ProviderEndpointValidator().requiresAPIKey(for: baseURL), trimmedKey.isEmpty {
+            throw VisionClientError.missingAPIKey
+        }
         let endpoint = try endpointURL(from: baseURL)
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.timeoutInterval = 60
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(trimmedKey)", forHTTPHeaderField: "Authorization")
+        if !trimmedKey.isEmpty {
+            request.setValue("Bearer \(trimmedKey)", forHTTPHeaderField: "Authorization")
+        }
 
         let dataURL = "data:\(mimeType);base64,\(imageData.base64EncodedString())"
         var body: [String: Any] = [

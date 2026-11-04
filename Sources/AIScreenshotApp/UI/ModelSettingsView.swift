@@ -27,10 +27,17 @@ struct ModelSettingsView: View {
     private var setupProgress: ModelSetupProgress {
         ModelSetupProgress(
             hasEndpoint: !draft.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            hasAPIKey: hasStoredKey || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            hasAPIKey: hasStoredKey
+                || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || !endpointRequiresAPIKey,
             hasVisionModel: selectedPreset.supportsVisionDirectly ? draft.hasVisionModel : true,
             hasTextModel: draft.hasTextModel
         )
+    }
+
+    /// 指向本机（localhost / 127.0.0.1）或局域网私有地址时，不强制要 API Key。
+    private var endpointRequiresAPIKey: Bool {
+        ProviderEndpointValidator().requiresAPIKey(for: draft.baseURL)
     }
 
     private var isDraftSaved: Bool {
@@ -310,11 +317,20 @@ struct ModelSettingsView: View {
                     VStack(alignment: .leading, spacing: 7) {
                         Text("API Key")
                             .font(.callout.weight(.semibold))
-                        SecureField(hasStoredKey ? "已保存；不更换可以留空" : "粘贴 API Key", text: $apiKey)
+                        SecureField(
+                            hasStoredKey
+                                ? "已保存；不更换可以留空"
+                                : (endpointRequiresAPIKey ? "粘贴 API Key" : "本机/局域网服务可留空"),
+                            text: $apiKey
+                        )
                             .textFieldStyle(.roundedBorder)
                             .disabled(isTesting)
                         Label(
-                            hasStoredKey ? "已安全保存在本机钥匙串" : "仅保存在这台 Mac 的钥匙串，不会写入普通配置文件",
+                            hasStoredKey
+                                ? "已安全保存在本机钥匙串"
+                                : (endpointRequiresAPIKey
+                                    ? "仅保存在这台 Mac 的钥匙串，不会写入普通配置文件"
+                                    : "Base URL 指向本机或局域网服务，Ollama 这类无鉴权服务可以留空"),
                             systemImage: hasStoredKey ? "checkmark.shield.fill" : "lock.shield"
                         )
                         .font(.caption2)

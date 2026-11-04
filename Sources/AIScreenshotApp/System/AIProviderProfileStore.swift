@@ -109,14 +109,26 @@ struct AIProviderProfileStore {
     }
 
     func apiKey(for profileID: UUID) throws -> String {
-        guard let key = try secretStore.read(account: keychainAccount(for: profileID)), !key.isEmpty else {
-            throw AIProviderProfileStoreError.missingAPIKey
+        if let key = try secretStore.read(account: keychainAccount(for: profileID)), !key.isEmpty {
+            return key
         }
-        return key
+        // 本机或局域网内的服务（Ollama、自建推理机）通常不校验密钥，
+        // 这种情况下返回空字符串，让调用方不带 Authorization 头发请求。
+        if profileIsKeylessLocal(profileID) { return "" }
+        throw AIProviderProfileStoreError.missingAPIKey
     }
 
     func hasAPIKey(for profileID: UUID) -> Bool {
-        secretStore.contains(account: keychainAccount(for: profileID))
+        if secretStore.contains(account: keychainAccount(for: profileID)) { return true }
+        return profileIsKeylessLocal(profileID)
+    }
+
+    /// 这套配置指向本机 / 局域网内、因而不强制要求 API Key。
+    func profileIsKeylessLocal(_ profileID: UUID) -> Bool {
+        guard let profile = (try? loadState())?.profiles.first(where: { $0.id == profileID }) else {
+            return false
+        }
+        return !ProviderEndpointValidator().requiresAPIKey(for: profile.baseURL)
     }
 
     func removeAPIKey(for profileID: UUID) throws {

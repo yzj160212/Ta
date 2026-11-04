@@ -39,6 +39,53 @@ final class OpenAICompatibleVisionClientTests: XCTestCase {
         XCTAssertEqual(result, "识别结果")
     }
 
+    /// 局域网里的 Ollama 这类服务没有鉴权：不填 Key 也要能发请求，并且不带 Authorization 头。
+    func testKeylessLanEndpointOmitsAuthorizationHeader() async throws {
+        VisionURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.absoluteString, "http://192.168.1.50:11434/v1/chat/completions")
+            XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+            let response = HTTPURLResponse(
+                url: try XCTUnwrap(request.url),
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (response, Data(#"{"choices":[{"message":{"content":"局域网识别结果"}}]}"#.utf8))
+        }
+
+        let result = try await makeClient().recognize(
+            baseURL: "http://192.168.1.50:11434/v1",
+            model: "qwen2.5vl:7b",
+            apiKey: "",
+            imageData: Data([1, 2, 3]),
+            prompt: "识别图片"
+        )
+        XCTAssertEqual(result, "局域网识别结果")
+    }
+
+    /// 公网服务仍然必须带 Key，缺了直接报错，不发请求。
+    func testPublicEndpointStillRequiresAPIKey() async {
+        VisionURLProtocol.handler = { _ in
+            XCTFail("不应该发出请求")
+            let response = HTTPURLResponse(url: URL(string: "https://api.example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+        do {
+            _ = try await makeClient().recognize(
+                baseURL: "https://api.example.com/v1",
+                model: "vision-model",
+                apiKey: "",
+                imageData: Data([1]),
+                prompt: "识别"
+            )
+            XCTFail("Expected missingAPIKey")
+        } catch let error as VisionClientError {
+            XCTAssertEqual(error, .missingAPIKey)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testSurfacesProviderErrorMessage() async {
         VisionURLProtocol.handler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!

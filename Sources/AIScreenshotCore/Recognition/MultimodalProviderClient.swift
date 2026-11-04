@@ -93,7 +93,10 @@ public struct MultimodalProviderClient: @unchecked Sendable {
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedModel.isEmpty else { throw VisionClientError.missingModel }
-        guard !trimmedKey.isEmpty else { throw VisionClientError.missingAPIKey }
+        // 本机 / 局域网里的服务通常没有鉴权，不强制要 Key。
+        if ProviderEndpointValidator().requiresAPIKey(for: baseURL), trimmedKey.isEmpty {
+            throw VisionClientError.missingAPIKey
+        }
         let endpoint = try endpoint(provider: provider, baseURL: baseURL, model: trimmedModel)
 
         var request = URLRequest(url: endpoint)
@@ -105,7 +108,7 @@ public struct MultimodalProviderClient: @unchecked Sendable {
         let body: [String: Any]
         switch provider {
         case .azureOpenAI:
-            request.setValue(trimmedKey, forHTTPHeaderField: "api-key")
+            if !trimmedKey.isEmpty { request.setValue(trimmedKey, forHTTPHeaderField: "api-key") }
             var azureBody = openAIChatBody(
                 model: trimmedModel,
                 dataURL: "data:\(mimeType);base64,\(base64)",
@@ -114,7 +117,7 @@ public struct MultimodalProviderClient: @unchecked Sendable {
             OpenAIChatResponseSupport.applyThinkingPreference(to: &azureBody, host: endpoint.host)
             body = azureBody
         case .anthropic:
-            request.setValue(trimmedKey, forHTTPHeaderField: "x-api-key")
+            if !trimmedKey.isEmpty { request.setValue(trimmedKey, forHTTPHeaderField: "x-api-key") }
             request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
             body = [
                 "model": trimmedModel,
@@ -128,7 +131,7 @@ public struct MultimodalProviderClient: @unchecked Sendable {
                 ]]
             ]
         case .googleGemini:
-            request.setValue(trimmedKey, forHTTPHeaderField: "x-goog-api-key")
+            if !trimmedKey.isEmpty { request.setValue(trimmedKey, forHTTPHeaderField: "x-goog-api-key") }
             body = [
                 "contents": [[
                     "parts": [

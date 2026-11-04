@@ -160,7 +160,10 @@ public struct TranslationProviderClient: @unchecked Sendable {
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedModel.isEmpty else { throw TranslationProviderError.missingModel }
-        guard !trimmedKey.isEmpty else { throw TranslationProviderError.missingAPIKey }
+        // 本机 / 局域网里的服务通常没有鉴权，不强制要 Key。
+        if ProviderEndpointValidator().requiresAPIKey(for: baseURL), trimmedKey.isEmpty {
+            throw TranslationProviderError.missingAPIKey
+        }
         let endpoint = try endpointURL(provider: provider, from: baseURL, model: trimmedModel)
 
         var request = URLRequest(url: endpoint)
@@ -171,8 +174,8 @@ public struct TranslationProviderClient: @unchecked Sendable {
         switch provider {
         case .openAICompatible, .azureOpenAI:
             if provider == .azureOpenAI {
-                request.setValue(trimmedKey, forHTTPHeaderField: "api-key")
-            } else {
+                if !trimmedKey.isEmpty { request.setValue(trimmedKey, forHTTPHeaderField: "api-key") }
+            } else if !trimmedKey.isEmpty {
                 request.setValue("Bearer \(trimmedKey)", forHTTPHeaderField: "Authorization")
             }
             let messageContent: Any
@@ -198,7 +201,7 @@ public struct TranslationProviderClient: @unchecked Sendable {
             if jsonMode { openAIBody["response_format"] = ["type": "json_object"] }
             body = openAIBody
         case .anthropic:
-            request.setValue(trimmedKey, forHTTPHeaderField: "x-api-key")
+            if !trimmedKey.isEmpty { request.setValue(trimmedKey, forHTTPHeaderField: "x-api-key") }
             request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
             var content: [[String: Any]] = []
             if let imageData {
@@ -219,7 +222,7 @@ public struct TranslationProviderClient: @unchecked Sendable {
                 "messages": [["role": "user", "content": content]]
             ]
         case .googleGemini:
-            request.setValue(trimmedKey, forHTTPHeaderField: "x-goog-api-key")
+            if !trimmedKey.isEmpty { request.setValue(trimmedKey, forHTTPHeaderField: "x-goog-api-key") }
             var parts: [[String: Any]] = []
             if let imageData {
                 parts.append(["inlineData": [
