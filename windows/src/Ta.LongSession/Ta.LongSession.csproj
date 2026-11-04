@@ -13,10 +13,14 @@
         UIAutomationClient.dll  → System.Windows.Automation（AutomationElement 等）
         UIAutomationTypes.dll   → System.Windows.Automation 的依赖类型
 
-      路径由 SDK 自带的属性拼出（NetCoreTargetingPackRoot + 捆绑版本），
-      不写死盘符与版本号；SDK 升级后自动跟随。
+      路径由 SDK 自带的属性拼出（NetCoreTargetingPackRoot），并按已安装的 8.0.x
+      引用包目录自动取一个 —— 不能直接用 $(BundledNETCoreAppPackageVersion)：
+      GitHub 的 windows runner 上该值与实际安装的 ref pack 版本对不上
+      （实测安装 8.0.6 / 8.0.22 / 8.0.33），HintPath 会落空导致 CS0234/CS0246。
+      不写死具体版本号，SDK 升级后自动跟随。
     -->
-    <WindowsDesktopRefPack>$(NetCoreTargetingPackRoot)\Microsoft.WindowsDesktop.App.Ref\$(BundledNETCoreAppPackageVersion)\ref\net8.0\</WindowsDesktopRefPack>
+    <_WindowsDesktopRefRoot>$(NetCoreTargetingPackRoot)\Microsoft.WindowsDesktop.App.Ref</_WindowsDesktopRefRoot>
+    <WindowsDesktopRefPack>$([System.IO.Directory]::GetDirectories('$(_WindowsDesktopRefRoot)', '8.0.*')[0])\ref\net8.0\</WindowsDesktopRefPack>
   </PropertyGroup>
 
   <ItemGroup>

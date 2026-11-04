@@ -4,10 +4,9 @@ name: Windows 端编译检查
 # 范围刻意收敛：只编译并测试本次会改到的项目（Ta.OCR / Ta.Settings 及其测试），
 # 不做打包 —— Windows 版仍是预览版，发行包走上游。
 #
-# 为什么不做整解决方案编译：Ta.Shell → Ta.LongSession 依赖
-# Microsoft.WindowsDesktop.App.Ref 里的 UIAutomationClient，ref pack 路径在
-# GitHub runner 上解析不到（既有问题，与本次修复无关）。那一步单独跑、非阻塞，
-# 便于发现问题但不拖累这里的验证。
+# Ta.Shell → Ta.LongSession 依赖 Microsoft.WindowsDesktop.App.Ref 里的
+# UIAutomationClient；该 csproj 现在按已安装的 8.0.x ref pack 目录自动取路径，
+# 不再依赖 $(BundledNETCoreAppPackageVersion)（在 runner 上与实装版本对不上）。
 on:
   workflow_dispatch:
   push:
@@ -49,8 +48,7 @@ jobs:
       - name: 设置项测试（含键名契约）
         run: dotnet test tests/Ta.Settings.Tests/Ta.Settings.Tests.csproj -c Release --nologo
 
-      - name: 整解决方案编译（已知既有失败，仅作观察）
-        continue-on-error: true
+      - name: 编译整个解决方案
         run: dotnet build Ta.sln -c Release --nologo
 
       - name: 诊断用：列出 WindowsDesktop 引用包
