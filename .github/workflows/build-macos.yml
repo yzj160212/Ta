@@ -1,0 +1,132 @@
+name: 打包 macOS 中文版
+
+# 手动触发：Actions → 打包 macOS 中文版 → Run workflow
+# 打 tag 触发：git tag v1.0.2 && git push origin v1.0.2 → 自动发 Release
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "构建架构（arm64 = Apple Silicon M 系列；universal = M 系列 + Intel）"
+        type: choice
+        options:
+          - arm64
+          - universal
+        default: arm64
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 编译与封包
+    runs-on: macos-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 查看工具链
+        run: |
+          set -euo pipefail
+          uname -m
+          swift --version
+          xcodebuild -version
+
+      - name: 运行测试
+        run: swift test 2>&1 | tail -30
+
+      - name: 编译 App
+        id: compile
+        env:
+          TARGET_ARCH: ${{ github.event.inputs.arch || 'arm64' }}
+        run: |
+          set -euo pipefail
+          ARCH="${TARGET_ARCH:-arm64}"
+          echo "目标架构: $ARCH"
+          swift build -c release --product AIScreenshotApp --triple arm64-apple-macosx14.0
+          ARM_BIN_DIR="$(swift build -c release --product AIScreenshotApp --triple arm64-apple-macosx14.0 --show-bin-path)"
+
+          if [[ "$ARCH" == "universal" ]]; then
+            swift build -c release --product AIScreenshotApp --triple x86_64-apple-macosx14.0
+            X86_BIN_DIR="$(swift build -c release --product AIScreenshotApp --triple x86_64-apple-macosx14.0 --show-bin-path)"
+            lipo -create \
+              "$ARM_BIN_DIR/AIScreenshotApp" \
+              "$X86_BIN_DIR/AIScreenshotApp" \
+              -output /tmp/AIScreenshotApp
+          else
+            cp "$ARM_BIN_DIR/AIScreenshotApp" /tmp/AIScreenshotApp
+          fi
+          lipo -archs /tmp/AIScreenshotApp
+          echo "arch=$ARCH" >> "$GITHUB_OUTPUT"
+
+      - name: 组装 .app
+        run: |
+          set -euo pipefail
+          APP="artifacts/拓.app"
+          rm -rf "artifacts"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Brand"
+          cp /tmp/AIScreenshotApp "$APP/Contents/MacOS/AIScreenshotApp"
+          chmod 755 "$APP/Contents/MacOS/AIScreenshotApp"
+          cp Resources/Info.plist "$APP/Contents/Info.plist"
+          cp Resources/Ta.icns "$APP/Contents/Resources/Ta.icns"
+          cp Resources/Brand/Ta-AppIcon.png "$APP/Contents/Resources/Brand/Ta-AppIcon.png"
+          cp -R Resources/Brand/Providers "$APP/Contents/Resources/Brand/Providers"
+          plutil -lint "$APP/Contents/Info.plist"
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist" > /tmp/version.txt
+          echo "版本: $(cat /tmp/version.txt)"
+
+      - name: 制作 dmg / zip / SHA256
+        id: package
+        run: |
+          set -euo pipefail
+          VERSION="$(cat /tmp/version.txt)"
+          APP="artifacts/拓.app"
+          OUT="artifacts/release/v$VERSION"
+          mkdir -p "$OUT"
+          ARCH="${{ steps.compile.outputs.arch }}"
+          SUFFIX="macOS-$ARCH"
+          ZIP="$OUT/Ta-$VERSION-$SUFFIX.zip"
+          DMG="$OUT/Ta-$VERSION-$SUFFIX.dmg"
+
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+
+          STAGE="$(mktemp -d)"
+          ditto "$APP" "$STAGE/拓.app"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "拓 Ta" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
+          rm -rf "$STAGE"
+
+          ( cd "$OUT" && shasum -a 256 "$(basename "$ZIP")" "$(basename "$DMG")" > SHA256SUMS.txt )
+          cat "$OUT/SHA256SUMS.txt"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ta-${{ steps.package.outputs.version }}-macOS-${{ steps.compile.outputs.arch }}
+          path: artifacts/release/v${{ steps.package.outputs.version }}/
+          if-no-files-found: error
+
+      - name: 发布 Release（仅打 tag 时）
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "拓 ${{ steps.package.outputs.version }}（macOS ${{ steps.compile.outputs.arch }} 中文版）"
+          files: artifacts/release/v${{ steps.package.outputs.version }}/*
+          body: |
+            macOS 中文版安装包（${{ steps.compile.outputs.arch }}）。
+
+            **安装方式**：下载 `.dmg` 或 `.zip` → 拖入「应用程序」。
+            本地构建的包为 ad-hoc 签名、未经 Apple 公证，首次打开请**右键 → 打开**，
+            或执行 `xattr -dr com.apple.quarantine /Applications/拓.app`。
+
+            校验：同目录 `SHA256SUMS.txt`。
