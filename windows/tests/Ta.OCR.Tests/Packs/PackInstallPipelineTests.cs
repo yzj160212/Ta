@@ -390,16 +390,21 @@ public class PackInstallPipelineTests
     }
 
     [Fact]
-    public async Task 配置的catalog地址必须是https()
+    public async Task 清单只从随程序发布的本地文件解析()
     {
+        // 安全回归：以前可以靠设置项 `ocrPackCatalogURL` 把下载源换成任意 https 地址，
+        // 而包的 SHA-256 也由那份清单提供（等于自证），安装前还会先跑包内可执行文件的
+        // health check —— 等于让本地程序能以用户权限执行任意代码。该开关已彻底移除，
+        // 因此这里只可能得到本地清单（与 Mac 版修复保持一致）。
         using var fixture = new PackFixture();
         fixture.MakeCatalogAndArchive();
 
-        // http:// 会被忽略，回落到本地候选（本地有 catalog，所以安装仍然成功）
-        var manager = fixture.CreateManager(catalogUrl: "http://insecure.example.com/catalog.json");
+        var manager = fixture.CreateManager();
         var availability = await manager.AvailablePackageAsync(OCREnginePreference.PaddleOCR);
 
         Assert.True(availability.IsLocal);
+        // 版本来自 fixture 写在 bundle 本地 catalog 里的包，说明确实读的是内置清单。
+        Assert.Equal("1.0.0", availability.Package.Version);
     }
 
     [Fact]

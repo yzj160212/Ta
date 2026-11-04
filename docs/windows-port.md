@@ -1067,7 +1067,7 @@ paddleocr-adapter --worker
 **Worker 读取循环**：`poll(fd, POLLIN|POLLHUP|POLLERR, min(100ms))` + `read(…, 64KB)`；**每次读取 30 s 超时**；**恰好 2 次尝试**（任何失败 → `stopSync()` 后重试一次）。
 **进程终止**：`SIGTERM` → 每 0.02 s 轮询最多 1 s → `SIGKILL` → `waitUntilExit`。
 
-**catalog 解析顺序**（`:397-411`）：`UserDefaults["ocrPackCatalogURL"]`（**必须 https**）→ `<app>/../ocr-packs/catalog.json` → `<app>/Contents/Resources/OCRPacks/catalog.json` → `.packageUnavailable`。包选择：按 engine + 架构过滤，按数字版本降序取第一个。相对 `downloadURL` 相对 catalog 所在目录解析，且必须 `file://` 或 `https`。
+**catalog 解析顺序**：只从随程序发布的本地文件解析 —— `<app>` 及其最多 5 层父目录下的 `ocr-packs/catalog.json` → `<app>/OCRPacks/catalog.json` → `.packageUnavailable`。**没有可配置的远程清单**：`ocrPackCatalogURL` 这个设置项已移除（曾允许改设置文件把下载源指向任意 https 地址，而校验值也由那份清单提供，安装前还会运行包内可执行文件）。包选择：按 engine + 架构过滤，按数字版本降序取第一个。相对 `downloadURL` 相对 catalog 所在目录解析，且必须 `file://` 或 `https`。
 
 ⚠️ **`.rapidOCR` 是死引擎**：枚举与增强包管线都在，但**没有构建脚本、没有 catalog、没有安装按钮**（设置页下载按钮仅在 `selectedEngine == .paddleOCR` 时出现）。Windows 版要么去掉该分支，要么补全 RapidOCR 包。
 
@@ -1238,7 +1238,6 @@ struct AIProviderProfile {
 | `deepSeekOCRBaseURL` | `""` | DeepSeek-OCR-2 地址 |
 | `deepSeekOCRModel` | `deepseek-ai/DeepSeek-OCR-2` | DeepSeek-OCR-2 模型 |
 | `deepSeekOCRPromptMode` | `plainText` | DeepSeek-OCR-2 输出格式 |
-| `ocrPackCatalogURL` | —（**设置时必须 https**） | 增强包目录 |
 | `aiProviderProfileStateV1` | — | Provider 状态（JSON blob） |
 | `globalHotKey.<rawValue>` | 见 §4.2 | 快捷键 |
 | `agentAccessEnabled` | **true** | Agent 开关 |

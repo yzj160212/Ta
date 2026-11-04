@@ -12,9 +12,6 @@ public interface IOCRSettingStore
     /// 设置项 <c>ocrEngine</c>。空值/未知值由实现方回退到 <see cref="OCREnginePreference.AppleVision"/>。
     /// </summary>
     OCREnginePreference Engine { get; }
-
-    /// <summary>设置项 <c>ocrPackCatalogURL</c>（必须 https，参考文档 §9.7）。</summary>
-    string? CatalogUrl { get; }
 }
 
 /// <summary>
@@ -68,7 +65,7 @@ public sealed class ConfiguredOCRService
     {
         _settings = settings;
         _localEngine = localEngine ?? new Engines.WindowsMediaOcrEngine();
-        _packs = packs ?? CreateDefaultPacks(settings);
+        _packs = packs ?? CreateDefaultPacks();
         _cloudRecognizer = cloudRecognizer;
     }
 
@@ -78,13 +75,12 @@ public sealed class ConfiguredOCRService
     /// <summary>内置本地引擎。</summary>
     public IOCRTextEngine LocalEngine => _localEngine;
 
-    private static OptionalOCRPackManager CreateDefaultPacks(IOCRSettingStore settings)
+    private static OptionalOCRPackManager CreateDefaultPacks()
         => new(new OCRPackManagerOptions
         {
             ApplicationSupportRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "AI Screenshot"),
-            ConfiguredCatalogUrl = settings.CatalogUrl,
         });
 
     /// <summary>对应 <c>prewarmIfNeeded()</c>（`:686-693</c>）。</summary>

@@ -11,8 +11,6 @@ namespace Ta.OCR.Tests.Configured;
 internal sealed class FakeSettingStore : IOCRSettingStore
 {
     public OCREnginePreference Engine { get; set; } = OCREnginePreference.AppleVision;
-
-    public string? CatalogUrl { get; set; }
 }
 
 /// <summary>记录调用次数的本地引擎替身。</summary>

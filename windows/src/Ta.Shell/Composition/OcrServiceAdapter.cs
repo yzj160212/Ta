@@ -9,7 +9,7 @@ using ShellOcrResult = Ta.Shell.Contracts.OcrResult;
 namespace Ta.Shell.Composition;
 
 /// <summary>
-/// <see cref="IOCRSettingStore"/> 的设置文件实现：读 <c>ocrEngine</c> 与 <c>ocrPackCatalogURL</c>。
+/// <see cref="IOCRSettingStore"/> 的设置文件实现：读 <c>ocrEngine</c>。
 /// </summary>
 public sealed class SettingsOcrSettingStore : IOCRSettingStore
 {
@@ -24,8 +24,6 @@ public sealed class SettingsOcrSettingStore : IOCRSettingStore
     public OCREnginePreference Engine =>
         OCREnginePreferenceExtensions.ParseEngine(_settings.ReadString(SettingKeys.OcrEngine, string.Empty));
 
-    /// <inheritdoc />
-    public string? CatalogUrl => _settings.Read("ocrPackCatalogURL");
 }
 
 /// <summary>

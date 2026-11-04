@@ -151,12 +151,6 @@ public sealed class HttpOCRPackTransport : IOCRPackTransport
 /// <summary>增强包管理器的路径与配置。</summary>
 public sealed record OCRPackManagerOptions
 {
-    /// <summary>
-    /// 设置项 <c>ocrPackCatalogURL</c> 的值。对应 Mac 的
-    /// <c>UserDefaults["ocrPackCatalogURL"]</c>（`:398-401</c>），**必须是 https**。
-    /// </summary>
-    public string? ConfiguredCatalogUrl { get; init; }
-
     /// <summary>应用数据根目录。包装在 <c>&lt;根&gt;/AI Screenshot/OCRPacks/&lt;engine&gt;/</c>。</summary>
     public required string ApplicationSupportRoot { get; init; }
 
@@ -699,22 +693,17 @@ public sealed class OptionalOCRPackManager
     ///
     /// Windows 的候选位置（Mac 是「app 同级的 ocr-packs/catalog.json」和
     /// 「Contents/Resources/OCRPacks/catalog.json」两处）：
-    /// ① 设置项 <c>ocrPackCatalogURL</c>（**必须 https**）
-    /// ② 程序目录及其最多 5 层父目录下的 <c>ocr-packs/catalog.json</c>
+    /// ① 程序目录及其最多 5 层父目录下的 <c>ocr-packs/catalog.json</c>
     ///    （开发构建的 exe 在 <c>bin/Debug/&lt;tfm&gt;/</c>，比 Mac 的 <c>.app/Contents/MacOS</c> 深）
-    /// ③ 程序目录下的 <c>OCRPacks/catalog.json</c>
+    /// ② 程序目录下的 <c>OCRPacks/catalog.json</c>
     /// </summary>
     private string CatalogLocation()
     {
-        // :398-401
-        var configured = _options.ConfiguredCatalogUrl;
-        if (!string.IsNullOrWhiteSpace(configured)
-            && Uri.TryCreate(configured, UriKind.Absolute, out var configuredUri)
-            && string.Equals(configuredUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return configured;
-        }
-
+        // 清单只从随程序发布的本地文件解析。以前这里会优先读设置项
+        // `ocrPackCatalogURL`（只要求 https），任何本地程序都能改设置文件把下载源指向
+        // 攻击者服务器 —— 而包的 SHA-256 也由那份清单提供（等于自证），并且安装前会先
+        // 运行包内可执行文件做 health check，等于以用户权限执行任意代码。
+        // 与 Mac 版同批修复（OptionalOCRPackManager.swift 的 catalogLocation()）。
         var bundleRoot = _options.BundleRoot;
 
         // :404-405 的 Windows 对应物。

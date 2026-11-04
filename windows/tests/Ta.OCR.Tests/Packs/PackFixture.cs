@@ -153,15 +153,12 @@ internal sealed class PackFixture : IDisposable
     /// </summary>
     public string ArchiveDirectory => Path.GetDirectoryName(CatalogPath)!;
 
-    public OptionalOCRPackManager CreateManager(
-        string? catalogUrl = null,
-        PersistentOCRWorker? worker = null)
+    public OptionalOCRPackManager CreateManager(PersistentOCRWorker? worker = null)
         => new(
             new OCRPackManagerOptions
             {
                 ApplicationSupportRoot = ApplicationSupportRoot,
                 BundleRoot = BundleRoot,
-                ConfiguredCatalogUrl = catalogUrl,
             },
             worker: worker);
 

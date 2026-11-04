@@ -50,9 +50,6 @@ public static class SettingsKeys
     /// <summary>DeepSeek-OCR-2 输出格式，默认 <c>plainText</c>。</summary>
     public const string DeepSeekOcrPromptMode = "deepSeekOCRPromptMode";
 
-    /// <summary>OCR 增强包目录地址（设置时必须 https）。</summary>
-    public const string OcrPackCatalogUrl = "ocrPackCatalogURL";
-
     // ---- 翻译 ----
 
     /// <summary>翻译源语言，默认「自动检测」。</summary>

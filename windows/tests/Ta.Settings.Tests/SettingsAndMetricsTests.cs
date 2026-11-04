@@ -27,7 +27,6 @@ public sealed class SettingsKeysTests
     [InlineData("deepSeekOCRBaseURL")]
     [InlineData("deepSeekOCRModel")]
     [InlineData("deepSeekOCRPromptMode")]
-    [InlineData("ocrPackCatalogURL")]
     [InlineData("aiProviderProfileStateV1")]
     [InlineData("agentAccessEnabled")]
     [InlineData("agentAutomaticCaptureAllowed")]
@@ -60,7 +59,6 @@ public sealed class SettingsKeysTests
             SettingsKeys.DeepSeekOcrBaseUrl,
             SettingsKeys.DeepSeekOcrModel,
             SettingsKeys.DeepSeekOcrPromptMode,
-            SettingsKeys.OcrPackCatalogUrl,
             SettingsKeys.AiProviderProfileState,
             SettingsKeys.AgentAccessEnabled,
             SettingsKeys.AgentAutomaticCaptureAllowed,
