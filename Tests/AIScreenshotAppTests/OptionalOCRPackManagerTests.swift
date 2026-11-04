@@ -201,6 +201,25 @@ final class OptionalOCRPackManagerTests: XCTestCase {
         XCTAssertEqual(try manager.catalogLocation(), bundled)
     }
 
+    /// 本机已有同级 ocr-packs/ 清单时不必联网，远端地址只是别的机器上的兜底。
+    func testSiblingCatalogWinsOverRemoteURL() throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+
+        let siblingDir = fixture.root.appendingPathComponent("ocr-packs", isDirectory: true)
+        try FileManager.default.createDirectory(at: siblingDir, withIntermediateDirectories: true)
+        let sibling = siblingDir.appendingPathComponent("catalog.json")
+        try Data("{\"schemaVersion\":1,\"packages\":[]}".utf8).write(to: sibling)
+
+        let manager = OptionalOCRPackManager(
+            applicationSupportRoot: fixture.support,
+            bundleURL: fixture.bundle,
+            remoteCatalogURL: "https://example.com/ta/ocr-packs/catalog.json"
+        )
+
+        XCTAssertEqual(try manager.catalogLocation(), sibling)
+    }
+
     func testOneClickInstallHandlesArchiveListingLargerThanPipeBuffer() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

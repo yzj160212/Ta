@@ -427,19 +427,21 @@ struct OptionalOCRPackManager: @unchecked Sendable {
             return bundled
         }
 
+        // 本地分发目录优先于远端：本机已有清单时不必联网，远端地址留给复制到
+        // 别的机器（那里没有同级的 ocr-packs/）时兜底。
+        let sibling = bundleURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("ocr-packs/catalog.json")
+        if fileManager.fileExists(atPath: sibling.path) {
+            return sibling
+        }
+
         if let configured = remoteCatalogURL?
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !configured.isEmpty,
            let remote = URL(string: configured),
            remote.scheme?.lowercased() == "https" {
             return remote
-        }
-
-        let sibling = bundleURL
-            .deletingLastPathComponent()
-            .appendingPathComponent("ocr-packs/catalog.json")
-        if fileManager.fileExists(atPath: sibling.path) {
-            return sibling
         }
 
         throw OptionalOCRPackError.packageUnavailable
