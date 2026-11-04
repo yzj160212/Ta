@@ -395,11 +395,11 @@ struct OptionalOCRPackManager: @unchecked Sendable {
     }
 
     private func catalogLocation() throws -> URL {
-        if let configured = UserDefaults.standard.string(forKey: "ocrPackCatalogURL"),
-           let url = URL(string: configured),
-           url.scheme?.lowercased() == "https" {
-            return url
-        }
+        // 清单地址只能来自 App 内置资源。以前这里会优先读 UserDefaults 的
+        // `ocrPackCatalogURL`，而那个键任何本地程序都能用 `defaults write` 改写：
+        // 指问攻击者的 HTTPS 服务器 → 下载攻击者的包（校验值也由攻击者的清单提供，
+        // 等于自证）→ 安装前会先跑一次 health check，等于以用户权限执行任意代码。
+        // 自建 / 自测的包请走「导入已解压增强包目录」（chooseAndImport），不要再靠远程清单。
         let candidates = [
             bundleURL.deletingLastPathComponent().appendingPathComponent("ocr-packs/catalog.json"),
             bundleURL.appendingPathComponent("Contents/Resources/OCRPacks/catalog.json")

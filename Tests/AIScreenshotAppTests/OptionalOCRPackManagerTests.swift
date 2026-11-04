@@ -125,6 +125,27 @@ final class OptionalOCRPackManagerTests: XCTestCase {
         XCTAssertTrue(manager.isInstalled(.paddleOCR))
     }
 
+    /// 回归防线：清单地址只能来自 App 内置资源。
+    /// 以前 `defaults write ocrPackCatalogURL https://…` 能把下载源换成任意服务器，
+    /// 而包的校验值也由那份清单提供，等于让攻击者决定装什么、装前还先跑一次 health check。
+    func testIgnoresUserDefaultsCatalogOverride() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let pack = try fixture.makePack(engine: .paddleOCR)
+        try fixture.makeCatalogArchive(pack: pack)
+        let manager = fixture.manager()
+
+        UserDefaults.standard.set(
+            "https://attacker.example.com/catalog.json",
+            forKey: "ocrPackCatalogURL"
+        )
+        defer { UserDefaults.standard.removeObject(forKey: "ocrPackCatalogURL") }
+
+        let availability = try await manager.availablePackage(for: .paddleOCR)
+        XCTAssertTrue(availability.isLocal, "清单必须只来自内置资源，不能被 UserDefaults 覆盖")
+        XCTAssertEqual(availability.package.version, "1.0.0")
+    }
+
     func testOneClickInstallHandlesArchiveListingLargerThanPipeBuffer() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

@@ -39,7 +39,7 @@ PaddleOCR-Pack-arm64-1.1.0/
 
 ## 一键安装发行清单
 
-当前 App 会先查找 `AI Screenshot.app` 同级的 `ocr-packs/catalog.json`，用于本地 Alpha 分发；正式发布时可以通过 `ocrPackCatalogURL` 指向 HTTPS 清单。相对下载地址相对于清单所在目录解析。
+清单只从 App 内置资源解析：先找 `AI Screenshot.app` 同级的 `ocr-packs/catalog.json`，再找 `Contents/Resources/OCRPacks/catalog.json`。为防本地程序用 `defaults write` 改写下载源，App 不再读取任何可覆盖的清单地址；自建或自测的包请用「导入已解压增强包目录」加载。相对下载地址相对于清单所在目录解析。
 
 ```json
 {
