@@ -74,6 +74,10 @@ struct SettingsView: View {
             }
         }
         .buttonStyle(.plain)
+        // 关掉系统键盘焦点环：设置窗口打开时这个按钮会成为第一响应者，
+        // 蓝色 focus ring 就一直挂在选中的标签上，看起来像关不掉的框。
+        // 选中态已由朱砂底色 + 底部胶囊表达，不需要额外的系统焦点框。
+        .focusEffectDisabled()
         .help(tab.title)
     }
 }
